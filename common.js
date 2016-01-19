@@ -77,16 +77,42 @@ function getCityNameByBaiDu(lat, lon, callback) {
   }
 }
 
+/**
+ * 初始化地图
+ * @param lon
+ * @param lat
+ */
+function initMap(lon, lat) {
+
+    if (lon && lat) {
+
+      $('.map').removeClass('hidden')
+        .attr('data-lon', lon)
+        .attr('data-lat', lat);
+
+      // 百度地图API功能
+      var map = new BMap.Map('mapBox');    // 创建Map实例
+      var point = new BMap.Point(lon, lat);
+      map.centerAndZoom(point, 17);
+
+      //map.enableScrollWheelZoom();
+      map.disableDragging();
+
+      map.removeOverlay(marker);
+
+      var marker = new BMap.Marker(point);  // 创建标注
+      map.addOverlay(marker);              // 将标注添加到地图中
+
+      return point;
+    }
+  }
+
 /*
  通过IP获取当前区域
  引入：<script src="http://int.dpool.sina.com.cn/iplookup/iplookup.php?format=js"></script>
  区域信息在全局变量：remote_ip_info中
   */
 
-// 图片文件系统
-// 测试：http://fs.fangdd.net/
-// 正式：http://fs.fangdd.com/
-var IMG_SERVER = 'http://fs.fangdd.com/';
 /**
  * 固定宽度图片根据devicePixelRatio输出自适应图片
  * @param url
@@ -97,25 +123,31 @@ var IMG_SERVER = 'http://fs.fangdd.com/';
  */
 function imageRatio(url, width, height, type) {
   if (!url) {
-    return '';
-  }
-  var ratio = window.devicePixelRatio || 1;
-
-  var httpFlag = url.indexOf('http://'),
-    imageFlag = url.indexOf('/image/'), thumbFlag = url.indexOf('/thumb/');
-  if (httpFlag > -1) {
-    if (imageFlag > 0) {
-      url = url.substring(imageFlag + 6);
-    } else if (thumbFlag > 0) {
-      url = url.substring(thumbFlag + 7);
-      // 再次截取
-      var slashFlag = url.indexOf('/');
-      url = url.substring(slashFlag);
+      return '';
     }
-  }
-  console.log('[image_ratio] url: ' + url);
-  console.log('[image_ratio] type: ' + type);
-  return IMG_SERVER + 'thumb/' + width * ratio + (type ? 'x' : ('m' + height * ratio)) + url;
+
+    var thumbUrl = url;
+    // clientWidth = 640px，ratio = 1 为基准计算缩略图尺寸
+    var clientWidth = parseInt(document.documentElement.clientWidth, 10);
+    var ratio = window.devicePixelRatio || 1;
+    // 基数
+    var base = (clientWidth < 640 ? clientWidth / 640 : 1) * ratio;
+    var thumbMode = Math.ceil(width * base) + (mode && mode == 1 ? 'x' : ('m' + Math.ceil(height * base)));
+
+    var imageFlag = url.indexOf('/image/'), thumbFlag = url.indexOf('/thumb/');
+    if (url.indexOf('http://') > -1) {
+      if (imageFlag > 0) {
+        thumbUrl = url.replace('/image/', '/thumb/' + thumbMode + '/');
+      } else if (thumbFlag > 0) {
+        var paths = url.split('/thumb/');
+        var slashFlag = paths[1].indexOf('/', 0);
+        thumbUrl = paths[0] + '/thumb/' + thumbMode + '/' + paths[1].substring(slashFlag + 1);
+      }
+    }
+
+    console.log('[image_ratio] thumbUrl: ' + thumbUrl);
+    console.log('[image_ratio] mode: ' + mode);
+    return thumbUrl;
 }
 
 /**
@@ -146,6 +178,109 @@ function isMobile(mobile) {
   return  !!(pattern.test(mobile) && mobile != '');
 }
 
+/**
+ * 验证url
+ * @param url
+ * @returns {boolean}
+ */
+function isUrl(url) {
+  var urlPattern = /(http|ftp|https):\/\/[\w-]+(\.[\w-]+)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?/;
+  return !!(urlPattern.test(url) && url != '');
+}
+
+/**
+ * 判断是否是数组
+ */
+var isArray = Array.isArray || function (obj) {
+  return toString.call(obj) === '[object Array]';
+};
+
+/**
+ * 字符串显示时间
+ * @param milltime
+ * @param type
+ * @returns {string}
+ * 默认：2015-10-25 10:23:50
+ * 0: 10:23,
+ * 1: 10-25,
+ * 2: 10-25 10:23,
+ * 3：10-25 周一
+ * 4: 2015-10-25
+ * 5：2015年
+ * 6：2015-10-25 10:23
+ */
+var dateFormat = function (milltime, type) {
+  if (!milltime) {
+    return '';
+  }
+  var weeks = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  var result = '';
+  // 处理时间
+  var toDate = new Date(milltime);
+  var year = toDate.getFullYear();
+  var month = (toDate.getMonth() + 1) < 10 ? '0' + (toDate.getMonth() + 1) : (toDate.getMonth() + 1);
+  var date = toDate.getDate() < 10 ? '0' + toDate.getDate() : toDate.getDate();
+  var hours = toDate.getHours() < 10 ? '0' + toDate.getHours() : toDate.getHours();
+  var minutes = toDate.getMinutes() < 10 ? '0' + toDate.getMinutes() : toDate.getMinutes();
+  var seconds = toDate.getSeconds() < 10 ? '0' + toDate.getSeconds() : toDate.getSeconds();
+  result = year + '-' + month + '-' + date + ' ' + hours + ':' + minutes + ':' + seconds;
+  switch (type) {
+    case 0:
+      result = hours + ':' + minutes;
+      break;
+    case 1:
+      result = month + '-' + date;
+      break;
+    case 2:
+      result = month + '-' + date + ' ' + hours + ':' + minutes;
+      break;
+    case 3:
+      result = month + '-' + date + ' ' + weeks[toDate.getDay()];
+      break;
+    case 4:
+      result = year + '-' + month + '-' + date;
+      break;
+    case 5:
+      result = year + '年';
+      break;
+    case 6:
+      result = year + '-' + month + '-' + date + ' ' + hours + ':' + minutes;
+      break;
+  }
+
+  return result;
+};
+
+/**
+ * 字符串时间转毫秒
+ * 2015-11-15 12:30:30
+ * @param datetime
+ * @returns {number}
+ */
+var dateParse = function (datetime) {
+  return new Date(datetime.replace(/-/g, '/')).getTime();
+};
+
+/**
+ * 输入转义
+ * @param str
+ * @returns {*}
+ */
+var htmlEnCode = function (str) {
+  if (str.length == 0) {
+    return '';
+  }
+
+  return str.replace(/&/g, "&gt;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/ /g, "&nbsp;")
+    .replace(/\'/g, "'")
+    .replace(/\"/g, "&quot;")
+    .replace(/\n/g, "<br>");
+};
+  
+  
 /**
  * 将查询字符串解析成一个对象
  * @param str
@@ -178,3 +313,44 @@ $(document).on('touchmove', function (e) {
   // addAjaxRequest(xhr);
   console.log('[ajaxSend] url : ' + options.url);
 });
+
+/**
+ * cookie 操作
+ * @type {{get: get, set: set, del: del}}
+ */
+var Cookie = {
+  /**
+   * 获取cookie值
+   * @param name
+   * @returns {*}
+   */
+  get: function (name) {
+    if (document.cookie.length > 0) {
+      var c_start = document.cookie.indexOf(name + "=");
+      if (c_start != -1) {
+        c_start = c_start + name.length + 1;
+        var c_end = document.cookie.indexOf(";", c_start);
+        if (c_end == -1) c_end = document.cookie.length;
+        return unescape(document.cookie.substring(c_start, c_end));
+      }
+    }
+    return "";
+  },
+  /**
+   * 设置cookie值
+   * @param name
+   * @param value
+   * @param expiredays
+   */
+  set: function (name, value, expiredays) {
+    var exdate = new Date(), ext = '';
+    exdate.setDate(exdate.getDate() + expiredays);
+    var domain = location.hostname.match(/([a-z0-9\-]+\.[a-z]+$)|([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$)/);
+    if (domain && domain.length) {
+      domain = domain[0];
+      ext = '; domain=' + domain + '; path=/';
+    }
+    document.cookie = name + "=" + escape(value) +
+      ((expiredays == null) ? "" : ";expires=" + exdate.toGMTString()) + ext;
+  }
+};
