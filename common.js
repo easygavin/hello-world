@@ -1,4 +1,33 @@
 /**
+ * [binarySearch 二分查找]
+ * @param  {[type]} value      [查找元素]
+ * @param  {[type]} arr        [数组]
+ * @param  {[type]} startIndex [开始索引]
+ * @param  {[type]} endIndex   [结束索引]
+ * @return {[type]}            [返回查找元素的索引]
+ */
+function binarySearch(value, arr, startIndex, endIndex) {
+  if (!value || !(arr instanceof Array)) return null;
+
+  var len = arr.length;
+
+  startIndex = typeof startIndex === "number" ? startIndex : 0;
+  endIndex = typeof endIndex === "number" ? endIndex : len - 1;
+  var midIndex = Math.floor((startIndex + endIndex) / 2),
+    midVal = arr[midIndex];
+
+  if (startIndex > endIndex) return null;
+
+  if (value >= midVal.min  && value <= midVal.max) {
+    return midVal;
+  } else if (value < midVal.min) {
+    return binarySearch(value, arr, startIndex, midIndex - 1);
+  } else {
+    return binarySearch(value, arr, midIndex + 1, endIndex);
+  }
+}
+
+/**
  * 本地定位
  * @param callback
  */
