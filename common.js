@@ -1,4 +1,25 @@
 /**
+ * 两位小数金额输入
+ * @param target
+ */
+amount(target) {
+  let regStrs = [
+    ['^0(\\d+)$', '$1'], // 禁止录入整数部分两位以上，但首位为0
+    ['[^\\d\\.]+$', ''], // 禁止录入任何非数字和点
+    ['\\.(\\d?)\\.+', '.$1'], // 禁止录入两个以上的点
+    ['^(\\d+\\.\\d{2}).+', '$1'] // 禁止录入小数点后两位以上
+  ]
+
+  let val = target.value
+  for (let i = 0; i < regStrs.length; i++) {
+    let reg = new RegExp(regStrs[i][0])
+    val = val.replace(reg, regStrs[i][1])
+  }
+
+  return val
+}
+
+/**
  * [binarySearch 二分查找]
  * @param  {[type]} value      [查找元素]
  * @param  {[type]} arr        [数组]
